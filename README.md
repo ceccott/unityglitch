@@ -1,4 +1,5 @@
-####Glitch Effect porting to Unity PostProcessing stack v2
+Glitch Effect porting to Unity PostProcessing stack v2
+-----------------------
 * Tested in Unity 2019.3.6 and Lightweight Rendering Pipeline
 
 This work is licensed under a Creative Commons Attribution 3.0 Unported License.
