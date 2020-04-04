@@ -8,7 +8,7 @@ using Random=UnityEngine.Random;
 public class GlitchEffect : PostProcessEffectSettings
 {
 	public TextureParameter displacementMap = new TextureParameter {value = null};
-	//public Shader Shader;
+
 	[Header("Glitch Effect")]
 
 	[Range(0f, 1f)]
