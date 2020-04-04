@@ -1,104 +1,95 @@
-/**
-This work is licensed under a Creative Commons Attribution 3.0 Unported License.
-http://creativecommons.org/licenses/by/3.0/deed.en_GB
-
-You are free:
-
-to copy, distribute, display, and perform the work
-to make derivative works
-to make commercial use of the work
-*/
-
+﻿using System;
 using UnityEngine;
+using UnityEngine.Rendering.PostProcessing;
+using Random=UnityEngine.Random;
 
-[ExecuteInEditMode]
-[AddComponentMenu("Image Effects/GlitchEffect")]
-[RequireComponent(typeof(Camera))]
-public class GlitchEffect : MonoBehaviour
+[Serializable]
+[PostProcess(typeof(GlitchRenderer), PostProcessEvent.AfterStack, "Custom/GlitchEffect")]
+public class GlitchEffect : PostProcessEffectSettings
 {
-	public Texture2D displacementMap;
-	public Shader Shader;
-	[Header("Glitch Intensity")]
+	public TextureParameter displacementMap = new TextureParameter {value = null};
+	//public Shader Shader;
+	[Header("Glitch Effect")]
 
-	[Range(0, 1)]
-	public float intensity;
+	[Range(0f, 1f)]
+	public FloatParameter intensity = new FloatParameter {value = 0.5f };
 
-	[Range(0, 1)]
-	public float flipIntensity;
+	[Range(0f, 1f)]
+	public FloatParameter flipIntensity = new FloatParameter {value = 0};
 
-	[Range(0, 1)]
-	public float colorIntensity;
+	[Range(0f, 1f)]
+	public FloatParameter colorIntensity = new FloatParameter {value = 0};
 
-	private float _glitchup;
-	private float _glitchdown;
-	private float flicker;
-	private float _glitchupTime = 0.05f;
-	private float _glitchdownTime = 0.05f;
-	private float _flickerTime = 0.5f;
-	private Material _material;
+}
 
-	void Start()
-	{
-		_material = new Material(Shader);
-	}
+public class GlitchRenderer : PostProcessEffectRenderer<GlitchEffect>
+{
+    private float _glitchup;
+    private float _glitchdown;
+    private float flicker;
+    private float _glitchupTime = 0.05f;
+    private float _glitchdownTime = 0.05f;
+    private float _flickerTime = 0.5f;
 
-	// Called by camera to apply image effect
-	void OnRenderImage(RenderTexture source, RenderTexture destination)
-	{
-		_material.SetFloat("_Intensity", intensity);
-		_material.SetFloat("_ColorIntensity", colorIntensity);
-		_material.SetTexture("_DispTex", displacementMap);
+    public override void Render(PostProcessRenderContext context)
+    {
+        var sheet = context.propertySheets.Get(Shader.Find("Hidden/Custom/GlitchShader"));
 
-		flicker += Time.deltaTime * colorIntensity;
+        sheet.properties.SetFloat("_Intensity", settings.intensity);
+        sheet.properties.SetFloat("_ColorIntensity", settings.colorIntensity);
+        sheet.properties.SetTexture("_DispTex", settings.displacementMap);
+
+        flicker += Time.deltaTime * settings.colorIntensity;
 		if (flicker > _flickerTime)
 		{
-			_material.SetFloat("filterRadius", Random.Range(-3f, 3f) * colorIntensity);
-			_material.SetVector("direction", Quaternion.AngleAxis(Random.Range(0, 360) * colorIntensity, Vector3.forward) * Vector4.one);
+			sheet.properties.SetFloat("filterRadius", Random.Range(-3f, 3f) * settings.colorIntensity);
+			sheet.properties.SetVector("direction", Quaternion.AngleAxis(Random.Range(0, 360) * settings.colorIntensity, Vector3.forward) * Vector4.one);
 			flicker = 0;
 			_flickerTime = Random.value;
 		}
 
-		if (colorIntensity == 0)
-			_material.SetFloat("filterRadius", 0);
+		if (settings.colorIntensity == 0)
+			sheet.properties.SetFloat("filterRadius", 0);
 
-		_glitchup += Time.deltaTime * flipIntensity;
+		_glitchup += Time.deltaTime * settings.flipIntensity;
 		if (_glitchup > _glitchupTime)
 		{
-			if (Random.value < 0.1f * flipIntensity)
-				_material.SetFloat("flip_up", Random.Range(0, 1f) * flipIntensity);
+			if (Random.value < 0.1f * settings.flipIntensity)
+				sheet.properties.SetFloat("flip_up", Random.Range(0, 1f) * settings.flipIntensity);
 			else
-				_material.SetFloat("flip_up", 0);
+				sheet.properties.SetFloat("flip_up", 0);
 
 			_glitchup = 0;
 			_glitchupTime = Random.value / 10f;
 		}
 
-		if (flipIntensity == 0)
-			_material.SetFloat("flip_up", 0);
+		if (settings.flipIntensity == 0)
+			sheet.properties.SetFloat("flip_up", 0);
 
-		_glitchdown += Time.deltaTime * flipIntensity;
+		_glitchdown += Time.deltaTime * settings.flipIntensity;
 		if (_glitchdown > _glitchdownTime)
 		{
-			if (Random.value < 0.1f * flipIntensity)
-				_material.SetFloat("flip_down", 1 - Random.Range(0, 1f) * flipIntensity);
+			if (Random.value < 0.1f * settings.flipIntensity)
+				sheet.properties.SetFloat("flip_down", 1 - Random.Range(0, 1f) * settings.flipIntensity);
 			else
-				_material.SetFloat("flip_down", 1);
+				sheet.properties.SetFloat("flip_down", 1);
 
 			_glitchdown = 0;
 			_glitchdownTime = Random.value / 10f;
 		}
 
-		if (flipIntensity == 0)
-			_material.SetFloat("flip_down", 1);
+		if (settings.flipIntensity == 0)
+			sheet.properties.SetFloat("flip_down", 1);
 
-		if (Random.value < 0.05 * intensity)
+		if (Random.value < 0.05 * settings.intensity)
 		{
-			_material.SetFloat("displace", Random.value * intensity);
-			_material.SetFloat("scale", 1 - Random.value * intensity);
+			sheet.properties.SetFloat("displace", Random.value * settings.intensity);
+			sheet.properties.SetFloat("scale", 1 - Random.value * settings.intensity);
 		}
 		else
-			_material.SetFloat("displace", 0);
+			sheet.properties.SetFloat("displace", 0);
 
-		Graphics.Blit(source, destination, _material);
-	}
+        // Blit !
+        context.command.BlitFullscreenTriangle(context.source, context.destination, sheet, 0);
+    }
 }
